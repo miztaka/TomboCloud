@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<appengine-web-app xmlns="http://appengine.google.com/ns/1.0">
+
+  <threadsafe>true</threadsafe>
+  <sessions-enabled>false</sessions-enabled>
+  <runtime>java8</runtime>
+  
+  <!-- default module settings -->
+  <module>default</module>
+  <instance-class>F1</instance-class>
+  <automatic-scaling>
+    <min-idle-instances>0</min-idle-instances>
+    <max-idle-instances>1</max-idle-instances>
+    <min-pending-latency>6s</min-pending-latency>
+    <max-pending-latency>6s</max-pending-latency>
+  </automatic-scaling>
+
+  <system-properties>
+    <property name="java.util.logging.config.file" value="WEB-INF/logging.properties"/>
+  </system-properties>
+  
+  <static-files>
+    <include path="/colpick/**" />
+    <include path="/css/**" />
+    <include path="/img/**" />
+    <include path="/js/**" />
+    <include path="/jtree/**" />
+    <include path="/rt/**" />
+    <include path="/test/**" />
+    <include path="/404.html" />
+    <include path="/favicon.ico" />
+    <include path="/index.html" />
+    <include path="/humans.txt" />
+    <include path="/robots.txt" />
+    <include path="/*.html" />
+  </static-files>  
+
+</appengine-web-app>
