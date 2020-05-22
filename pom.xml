@@ -71,6 +71,10 @@
         <groupId>com.google.cloud.tools</groupId>
         <artifactId>appengine-maven-plugin</artifactId>
         <version>${appengine.maven.plugin.version}</version>
+        <configuration>
+          <deploy.projectId>tombocloud</deploy.projectId>
+          <deploy.version>v1</deploy.version>
+        </configuration>
       </plugin>
       
       <plugin>
