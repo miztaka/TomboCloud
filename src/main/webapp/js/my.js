@@ -4,6 +4,7 @@ var my = {
 	client_id : "726434013214-3ibkjv4qoqr5sksi5fvp5jubunkrmj8d.apps.googleusercontent.com",
 	scopes: 'email profile openid https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/drive.install',
 	tabTemplate: '<li><a href="#{href}">#{label}</a> <span class="ui-icon ui-icon-close" role="presentation">Remove Tab</span></li>',
+    tokenClient: null,
 	jq: {
 		editor: null,
 		tabLabel: null,
@@ -985,6 +986,7 @@ tombo.Authorizer.prototype.onAuthSuccess = function(authResult, onAuthComplete) 
 	my.log(authResult);
 	self.authResult = authResult;
 	gapi.auth.setToken(authResult);
+    self.expires_at = Date.now() + (authResult.expires_in-60)*1000;
 	
 	// refreshタイマー
 	var exp_time = (self.authResult.expires_in - 120)*1000;
@@ -1009,16 +1011,14 @@ tombo.Authorizer.prototype.doRefreshToken = function(cb) {
 	var self = this;
 
 	my.log("doRefreshToken called.");
-	self.googleUser.reloadAuthResponse().then(function(authResult) {
-		self.onAuthSuccess(authResult, cb);
-	})
-	.catch(function(err) {
-		// 失敗
-		setTimeout(function() {
-			self.doRefreshToken(cb);
-		}, 30000); // 30秒後に再実行
-	});
-	//self.authorize(true);
+    if (confirm("アクセストークンを再取得しますか？")) {
+        my.tokenClient.callback = function(response) {
+            if (response && response.access_token) {
+                self.onAuthSuccess(response, cb);
+            }
+        };
+        my.tokenClient.requestAccessToken({prompt:''});
+    }
 };
 
 /**
@@ -1026,7 +1026,7 @@ tombo.Authorizer.prototype.doRefreshToken = function(cb) {
  */
 tombo.Authorizer.prototype.isValid = function() {
 	var self = this;
-	var exp_time = self.authResult.expires_at - 60*1000;
+	var exp_time = self.expires_at - 60*1000;
 	my.log("exp_time:" + new Date(exp_time));
 	return exp_time > Date.now();
 }
@@ -1109,25 +1109,25 @@ tombo.Config.prototype.init = function(onLoadComplete) {
     // google picker
     $('#openRootFolderChoice').click(function() {
 		if (! self.pickerInstance) {
-			
-			var docsView = new google.picker.DocsView(google.picker.ViewId.FOLDERS)
-				.setSelectFolderEnabled(true);
-			
-			self.pickerInstance = new google.picker.PickerBuilder()
-        		//.enableFeature(google.picker.Feature.NAV_HIDDEN)
-        		.enableFeature(google.picker.Feature.MINE_ONLY)
-        		.setLocale('ja')
-        		.setAppId(my.client_id)
-        		.setOAuthToken(self.authorizer.authResult.access_token)
-        		//.setAuthUser(MY.X.UserEmail)
-        		.setCallback(function(data) {
-        	        if (data.action == google.picker.Action.PICKED) {
-        	        	var selectedFolder = data.docs[0];
-        	        	self.onSelected(selectedFolder);
-        	        }
-        		})
-        		.addView(docsView)
-        		.build();
+			gapi.load('picker', function() {
+                var docsView = new google.picker.DocsView(google.picker.ViewId.FOLDERS)
+                    .setSelectFolderEnabled(true);
+                self.pickerInstance = new google.picker.PickerBuilder()
+                    //.enableFeature(google.picker.Feature.NAV_HIDDEN)
+                    .enableFeature(google.picker.Feature.MINE_ONLY)
+                    .setLocale('ja')
+                    .setAppId(my.client_id)
+                    .setOAuthToken(self.authorizer.authResult.access_token)
+                    //.setAuthUser(MY.X.UserEmail)
+                    .setCallback(function(data) {
+                        if (data.action == google.picker.Action.PICKED) {
+                            var selectedFolder = data.docs[0];
+                            self.onSelected(selectedFolder);
+                        }
+                    })
+                    .addView(docsView)
+                    .build();
+            });
 		}
 		self.pickerInstance.setVisible(true);    	
     });
