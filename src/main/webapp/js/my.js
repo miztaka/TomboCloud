@@ -688,7 +688,7 @@ tombo.Drive = {
 		    var accessToken = this.authorizer.authResult.access_token;
 		    var xhr = new XMLHttpRequest();
 		    my.log(file.downloadUrl);
-		    xhr.withCredentials = true;
+		    // xhr.withCredentials = true;
 		    xhr.open('GET', file.downloadUrl.replace('content.google','www.google'));
 		    xhr.setRequestHeader('Authorization', 'Bearer ' + accessToken);
 		    xhr.onload = function() {
