@@ -151,6 +151,12 @@ html,body { height:100%; margin:0; }
 </table>
 </div>
 <div id="dialog-auth" style="display:none"></div>
+<div id="g_id_onload"
+     data-client_id="726434013214-3ibkjv4qoqr5sksi5fvp5jubunkrmj8d.apps.googleusercontent.com"
+     data-ux_mode="popup"
+     data-auto_select="true"
+     data-callback="onSignIn">
+</div>
 <script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"></script>
 <script src="//ajax.googleapis.com/ajax/libs/jqueryui/1.10.4/jquery-ui.min.js"></script>
 <script>window.jQuery || document.write('<script src="js/vendor/jquery-1.11.0.min.js"><\/script>')</script>
@@ -164,51 +170,36 @@ html,body { height:100%; margin:0; }
 <script src="colpick/js/colpick.js"></script>
 <script src="//cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/js/toastr.min.js"></script>
 <script>
-function handleClientLoad() {
-    console.log("handleClientLoad called");
-    my.tokenClient = google.accounts.oauth2.initTokenClient({
-        client_id: my.client_id,
-        scope: my.scopes,
-        callback: function(response) {
-            console.log(response);
-            if (response && response.access_token) {
-                
-                console.log("load lib");
-                /*
-                gapi.load('auth2,drive-share,picker', function() {
-                    console.log("loaded auth2 etc.");
-                    my.authorizer = new tombo.Authorizer(my.client_id, my.scopes);
-                    my.init();
-                });
-                */
-                gapi.load('client', function() {
-                    console.log('client loaded');
-                    gapi.client.setToken({
-                        access_token: response.access_token
-                    });
-                    gapi.client.init({
-                        'apiKey': 'AIzaSyC-XQMp3Q8dKF9TDd2bw6AXIsXIrjt4cbY',
-                        'discoveryDocs': [
-                            'https://www.googleapis.com/discovery/v1/apis/drive/v2/rest',
-                        ],
-                        'clientId': my.client_id,
-                        'scope': my.scope,
-                    }).then(function() {
-                        console.log('client initialized');
-                        tombo.Drive.loaded = true;
-                        my.authorizer = new tombo.Authorizer(my.client_id, my.scopes);
-                        my.authorizer.onAuthSuccess(response, function() {
-                            my.init();
-                        });
-                    });
-                });
-            }
-        }
-    });
-    if (confirm("ログイン")) {
-        my.tokenClient.requestAccessToken({prompt:''});
+function onSignIn(response) {
+    my.authorizer = new tombo.Authorizer(my.client_id, my.scopes);
+    if (!tombo.Drive.loaded) {
+        alert('library no loaded yet..');
+    } else {
+        my.authorizer.prompt(function() {
+            console.log('before init');
+            my.init();
+        }, function(error) {
+            alert(error);
+        });
     }
 }
+function loadClient() {
+    gapi.load('client', function() {
+        console.log('client loaded');
+        gapi.client.init({
+            'apiKey': 'AIzaSyC-XQMp3Q8dKF9TDd2bw6AXIsXIrjt4cbY',
+            'discoveryDocs': [
+                'https://www.googleapis.com/discovery/v1/apis/drive/v2/rest',
+            ],
+            'clientId': my.client_id,
+            'scope': my.scopes,
+        }).then(function() {
+            console.log('client initialized');
+            tombo.Drive.loaded = true;
+        });
+    });
+}
+
 jQuery(function($) {
     $("#treeArea").resizable({
         handles:"e"
@@ -233,7 +224,7 @@ jQuery(function($) {
     */
 });
 </script>
-<script src="https://apis.google.com/js/api.js"></script>
-<script src="https://accounts.google.com/gsi/client" async defer onload="handleClientLoad()"></script>
+<script src="https://apis.google.com/js/api.js?onload=loadClient"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 </body>
 </html>

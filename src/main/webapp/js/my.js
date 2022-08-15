@@ -2,7 +2,7 @@
 var my = {
 	//client_id : "503907923831.apps.googleusercontent.com",
 	client_id : "726434013214-3ibkjv4qoqr5sksi5fvp5jubunkrmj8d.apps.googleusercontent.com",
-	scopes: 'email profile openid https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/drive.install',
+	scopes: 'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/drive.install',
 	tabTemplate: '<li><a href="#{href}">#{label}</a> <span class="ui-icon ui-icon-close" role="presentation">Remove Tab</span></li>',
     tokenClient: null,
 	jq: {
@@ -679,25 +679,24 @@ tombo.Drive = {
 		self.assertLibraryLoaded();
 		my.log("loadFile called...");
 		if (file.downloadUrl) {
-			if (! self.authorizer.isValid()) {
-				self.authorizer.doRefreshToken(function() {
-					self.loadFile(file, onLoad);
-				});
-				return;
-			}
-		    var accessToken = this.authorizer.authResult.access_token;
-		    var xhr = new XMLHttpRequest();
-		    my.log(file.downloadUrl);
-		    // xhr.withCredentials = true;
-		    xhr.open('GET', file.downloadUrl.replace('content.google','www.google'));
-		    xhr.setRequestHeader('Authorization', 'Bearer ' + accessToken);
-		    xhr.onload = function() {
-		    	onLoad(xhr);
-		    };
-		    xhr.onerror = function() {
-		    	onLoad(null);
-		    };
-		    xhr.send();
+            self.authorizer.prompt(function() {
+                var accessToken = self.authorizer.authResult.access_token;
+                var xhr = new XMLHttpRequest();
+                my.log(file.downloadUrl);
+                //xhr.withCredentials = true;
+                xhr.open('GET', file.downloadUrl.replace('content.google','www.google'));
+                //xhr.open('GET', file.downloadUrl);
+                xhr.setRequestHeader('Authorization', 'Bearer ' + accessToken);
+                xhr.onload = function() {
+                    onLoad(xhr);
+                };
+                xhr.onerror = function() {
+                    onLoad(null);
+                };
+                xhr.send();
+            }, function(error) {
+                alert(error);
+            });
 		} else {
 			onLoad(null);
 		}
@@ -712,19 +711,23 @@ tombo.Drive = {
 	 */
 	saveFile: function(file, contents, onLoad) {
 		this.assertLibraryLoaded();
-	    var request = gapi.client.request({
-	        'path': '/upload/drive/v2/files/' + file.id,
-	        'method': 'PUT',
-	        'params': {'uploadType': 'media'},
-	        'headers': {
-	          'Content-Type': file.mimeType
-	          //'Content-Length': self.byteCount(content)
-	        },
-	        'body': contents
-	    });
-	    request.execute(function(file) {
-	    	onLoad(file);
-	    });
+        this.authorizer.prompt(function() {
+            var request = gapi.client.request({
+                'path': '/upload/drive/v2/files/' + file.id,
+                'method': 'PUT',
+                'params': {'uploadType': 'media'},
+                'headers': {
+                  'Content-Type': file.mimeType
+                  //'Content-Length': self.byteCount(content)
+                },
+                'body': contents
+            });
+            request.execute(function(file) {
+                onLoad(file);
+            });
+        }, function(error) {
+            alert('ファイルの保存に失敗しました:'+error);
+        })
 	},
 	
 	/**
@@ -735,18 +738,21 @@ tombo.Drive = {
 	 */
 	findByTitle: function(title, callback) {
 		this.assertLibraryLoaded();
-		
-		gapi.client.drive.files.list({
-			q:"title = '" + title + "'"
-		}).execute(function(resp) {
-			my.log("Config#load:");
-			my.log(resp);
-			if (resp.items && resp.items.length) {
-				callback(resp.items[0]);
-			} else {
-				callback(null);
-			}
-		});
+		this.authorizer.prompt(function() {
+    		gapi.client.drive.files.list({
+    			q:"title = '" + title + "'"
+    		}).execute(function(resp) {
+    			my.log("Config#load:");
+    			my.log(resp);
+    			if (resp.items && resp.items.length) {
+    				callback(resp.items[0]);
+    			} else {
+    				callback(null);
+    			}
+    		});
+        }, function(error) {
+            alert('ファイルの取得に失敗しました:' + error);
+        });
 	},
 	
 	/**
@@ -756,10 +762,14 @@ tombo.Drive = {
 	 * @param callback
 	 */
 	insertFile: function(newFile, callback) {
-		this.assertLibraryLoaded();	
-		gapi.client.drive.files.insert(newFile).execute(function(resp) {
-			callback(resp);
-		});
+		this.assertLibraryLoaded();
+        this.authorizer.prompt(function() {
+            gapi.client.drive.files.insert(newFile).execute(function(resp) {
+                callback(resp);
+            });
+        }, function(error) {
+            alert('新しいファイルを作成しました:' + error);
+        });
 	},
 	
 	/**
@@ -769,9 +779,13 @@ tombo.Drive = {
 	 */
 	updateFile: function(updateFile, callback) {
 		this.assertLibraryLoaded();
-    	gapi.client.drive.files.update(updateFile).execute(function(resp) {
-    		callback(resp);
-    	});
+        this.authorizer.prompt(function() {
+        	gapi.client.drive.files.update(updateFile).execute(function(resp) {
+        		callback(resp);
+        	});
+        }, function(error) {
+            alert('updateFileに失敗しました:' + error);
+        });
 	},
 	
 	/**
@@ -781,9 +795,13 @@ tombo.Drive = {
 	 */
 	getFile: function(fileId, callback) {
 		this.assertLibraryLoaded();
-		gapi.client.drive.files.get({fileId: fileId}).execute(function(resp) {
-			callback(resp);
-		});
+        this.authorizer.prompt(function() {
+    		gapi.client.drive.files.get({fileId: fileId}).execute(function(resp) {
+    			callback(resp);
+    		});
+        }, function(error) {
+            alert('ファイルの取得に失敗しました:' + error);
+        });
 	},
 	
 	/**
@@ -792,39 +810,46 @@ tombo.Drive = {
 	 */
 	retrieveAllFiles: function(rootId, callback) {
 		this.assertLibraryLoaded();
-		var retrievePageOfFiles = function(request, result) {
-			request.execute(function(resp) {
-				result = result.concat(resp.items);
-				my.log(result);
-				var nextPageToken = resp.nextPageToken;
-				if (nextPageToken) {
-					request = gapi.client.drive.files.list({
-						'pageToken': nextPageToken
-			        });
-			        retrievePageOfFiles(request, result);
-				} else {
-			        callback(result);
-				}
-			});
-		};
-		var initialRequest = gapi.client.drive.files.list({
-			q:"'"+rootId+"' in parents and trashed=false" 
-		});
-		retrievePageOfFiles(initialRequest, []);
+        this.authorizer.prompt(function() {
+            var retrievePageOfFiles = function(request, result) {
+                request.execute(function(resp) {
+                    result = result.concat(resp.items);
+                    my.log(result);
+                    var nextPageToken = resp.nextPageToken;
+                    if (nextPageToken) {
+                        request = gapi.client.drive.files.list({
+                            'pageToken': nextPageToken
+                        });
+                        retrievePageOfFiles(request, result);
+                    } else {
+                        callback(result);
+                    }
+                });
+            };
+            var initialRequest = gapi.client.drive.files.list({
+                q:"'"+rootId+"' in parents and trashed=false" 
+            });
+            retrievePageOfFiles(initialRequest, []);
+        }, function(error) {
+            alert('retrieveAllFilesに失敗しました:' + error);
+        });
 	},
 	
 	/**
 	 * driveファイルの削除
 	 */
 	deleteFile: function(fileId, callback) {
-		
-		gapi.client.drive.files.trash({
-			'fileId': fileId
-		}).execute(function(resp) {
-			if (callback) {
-				callback(resp);
-			}
-		});
+        this.authorizer.prompt(function() {
+            gapi.client.drive.files.trash({
+                'fileId': fileId
+            }).execute(function(resp) {
+                if (callback) {
+                    callback(resp);
+                }
+            });
+        }, function(error) {
+            alert('deleteFileに失敗しました:' + error);
+        });
 	},
 	
 	/**
@@ -835,16 +860,19 @@ tombo.Drive = {
 	 * @param callback
 	 */
 	moveFile: function(fileId, folderFrom, folderTo, callback) {
-		
-		gapi.client.drive.files.update({
-			fileId: fileId,
-			addParents: folderTo,
-			removeParents: folderFrom
-		}).execute(function(resp) {
-			if (callback) {
-				callback(resp);
-			}
-		});
+        this.authorizer.prompt(function() {
+            gapi.client.drive.files.update({
+                fileId: fileId,
+                addParents: folderTo,
+                removeParents: folderFrom
+            }).execute(function(resp) {
+                if (callback) {
+                    callback(resp);
+                }
+            });
+        }, function(error) {
+            alert('moveFileに失敗しました:' + error);
+        });
 	},
 	
 	/**
@@ -876,159 +904,31 @@ tombo.Authorizer = function(clientId, scopes) {
 	this.timer = null;
 	this.authResult = null;
 	this.googleUser = null;
-};
-
-/**
- * 認証を行ないます
- * @param immediate_flg
- * @param onAuthComplete 引数なしで呼び出されるコールバック
- */
-tombo.Authorizer.prototype.authorize = function(immediate_flg, onAuthComplete) {
-	var self = this;
-	
-	/*
-	gapi.auth.authorize({
-    	client_id: this.clientId,
-    	scope: this.scopes,
-    	immediate: immediate_flg
-    }, function(authResult) {
-        if (authResult && !authResult.error) {
-        	self.onAuthSuccess(authResult, onAuthComplete);
-        } else {
-        	self.onUnauthorized(authResult, onAuthComplete);
-        }
+    this.tokenClient = google.accounts.oauth2.initTokenClient({
+        client_id: clientId,
+        scope: scopes,
+        callback: ''
     });
-    */
-	
-    var auth = gapi.auth2.init({
-        client_id: self.clientId
-    });
-    my.log("auth2.init...");
-    
-    auth.then(function() {
-        // after init
-        my.log("then...");
-        //auth = gapi.auth2.getAuthInstance();
-        if (auth.isSignedIn.get() == true) {
-            my.log("signed in.");
-            self.googleUser = auth.currentUser.get();
-            var authResult = self.googleUser.getAuthResponse();
-            if (authResult.access_token) {
-            	self.onAuthSuccess(authResult, onAuthComplete);
-            } else {
-            	self.googleUser.reloadAuthResponse().then(function(authResult) {
-            		my.log("reloadAuthResponse:");
-            		my.log(authResult);
-            		self.onAuthSuccess(authResult, onAuthComplete);
-            	});
-            }
-        } else {
-            my.log("not signed in.");
-            auth.isSignedIn.listen(function(bool) {
-                if (bool) {
-                    my.log("changed to signed in.");
-                    self.googleUser = auth.currentUser.get();
-                    self.onAuthSuccess(self.googleUser.getAuthResponse(), onAuthComplete);
-                } else {
-                    alert("signin failed.");
-                }
-            })
-            my.log("try to sign in.....");
-            self.onUnauthorized(null, onAuthComplete);
-        }
-    });	
+    this.expires_at = 0;
 };
 
-/**
- * 認証されていない時の処理
- * ダイアログを開いてログインを実行してもらう
- * 
- * @param authResult
- * @param onAuthComplete
- */
-tombo.Authorizer.prototype.onUnauthorized = function(authResult, onAuthComplete) {
-	var self = this;
-	
-    // ダイアログを開いてDriveにログインしてもらう
-	if (! self.authDialog) {
-		self.authDialog = $('#dialog-auth');
-	} else {
-		self.authDialog.html("");
-	}
-	gapi.signin2.render("dialog-auth", {scope: self.scopes});
-	
-	/*
-	$('<a href="#">Driveにログイン</a>').appendTo(self.authDialog).click(function(e) {
-		e.preventDefault();
-		self.authorize(false, onAuthComplete);
-		self.authDialog.html("<p>認証しています...</p>");
-	});
-	*/
-	self.authDialog.dialog();
-};
-
-/**
- * OAuth認証成功後の処理
- * refreshTokenのタイマーをしかけてからコールバックを実行する
- * 
- * @param authResult
- * @param onAuthComplete
- */
-tombo.Authorizer.prototype.onAuthSuccess = function(authResult, onAuthComplete) {
-	var self = this;
-
-	// ダイアログが開いていれば閉じる
-	if (self.authDialog) {
-		self.authDialog.dialog("close");
-	}
-	
-	my.log("onAuthSuccess called. authResult: ");
-	my.log(authResult);
-	self.authResult = authResult;
-	gapi.auth.setToken(authResult);
-    self.expires_at = Date.now() + (authResult.expires_in-60)*1000;
-	
-	// refreshタイマー
-	var exp_time = (self.authResult.expires_in - 120)*1000;
-	if (self.timer) {
-		clearTimeout(self.timer);
-	}
-	self.timer = setTimeout(function() {
-		my.log("timeout timer:");
-		self.doRefreshToken();
-	}, exp_time);
-	
-	// exec callback
-	if (onAuthComplete) {
-		onAuthComplete();
-	}
-};
-
-/**
- * expireの直前に再帰的に認証を呼び出す処理
- */
-tombo.Authorizer.prototype.doRefreshToken = function(cb) {
-	var self = this;
-
-	my.log("doRefreshToken called.");
-    if (confirm("アクセストークンを再取得しますか？")) {
-        my.tokenClient.callback = function(response) {
-            if (response && response.access_token) {
-                self.onAuthSuccess(response, cb);
-            }
-        };
-        my.tokenClient.requestAccessToken({prompt:''});
+tombo.Authorizer.prototype.prompt = function(onSuccess, onError) {
+    var self = this;
+    if (self.expires_at > Date.now()) {
+        onSuccess();
+        return;
     }
-};
-
-/**
- * アクセストークンが有効かどうか
- */
-tombo.Authorizer.prototype.isValid = function() {
-	var self = this;
-	var exp_time = self.expires_at - 60*1000;
-	my.log("exp_time:" + new Date(exp_time));
-	return exp_time > Date.now();
+    self.tokenClient.callback = async (response) => {
+        if (response.error !== undefined) {
+            onError(response.error);
+        }
+        self.authResult = response;
+        self.expires_at = Date.now() + (self.authResult.expires_in-120)*1000;
+        onSuccess();
+    };
+    console.log('call accessToken');
+    self.tokenClient.requestAccessToken({prompt: ''});
+    console.log('requested accessToken');
 }
 
 /*
@@ -1109,24 +1009,28 @@ tombo.Config.prototype.init = function(onLoadComplete) {
     // google picker
     $('#openRootFolderChoice').click(function() {
 		if (! self.pickerInstance) {
-			gapi.load('picker', function() {
-                var docsView = new google.picker.DocsView(google.picker.ViewId.FOLDERS)
-                    .setSelectFolderEnabled(true);
-                self.pickerInstance = new google.picker.PickerBuilder()
-                    //.enableFeature(google.picker.Feature.NAV_HIDDEN)
-                    .enableFeature(google.picker.Feature.MINE_ONLY)
-                    .setLocale('ja')
-                    .setAppId(my.client_id)
-                    .setOAuthToken(self.authorizer.authResult.access_token)
-                    //.setAuthUser(MY.X.UserEmail)
-                    .setCallback(function(data) {
-                        if (data.action == google.picker.Action.PICKED) {
-                            var selectedFolder = data.docs[0];
-                            self.onSelected(selectedFolder);
-                        }
-                    })
-                    .addView(docsView)
-                    .build();
+            self.authorizer.prompt(function() {
+                gapi.load('picker', function() {
+                    var docsView = new google.picker.DocsView(google.picker.ViewId.FOLDERS)
+                        .setSelectFolderEnabled(true);
+                    self.pickerInstance = new google.picker.PickerBuilder()
+                        //.enableFeature(google.picker.Feature.NAV_HIDDEN)
+                        .enableFeature(google.picker.Feature.MINE_ONLY)
+                        .setLocale('ja')
+                        .setAppId(my.client_id)
+                        .setOAuthToken(self.authorizer.authResult.access_token)
+                        //.setAuthUser(MY.X.UserEmail)
+                        .setCallback(function(data) {
+                            if (data.action == google.picker.Action.PICKED) {
+                                var selectedFolder = data.docs[0];
+                                self.onSelected(selectedFolder);
+                            }
+                        })
+                        .addView(docsView)
+                        .build();
+                });
+            }, function(error) {
+                alert('Pickerの作成に失敗しました:' + error);
             });
 		}
 		self.pickerInstance.setVisible(true);    	
